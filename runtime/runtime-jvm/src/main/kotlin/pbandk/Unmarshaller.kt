@@ -86,15 +86,16 @@ actual class Unmarshaller(val stream: CodedInputStream, val discardUnknownFields
             WireFormat.WIRETYPE_FIXED32 -> UnknownField.Value.Fixed32(stream.readFixed32())
             else -> error("Unrecognized wire type")
         }
-        unknownFields.compute(WireFormat.getTagFieldNumber(tag)) { fieldNum, prevVal ->
-            UnknownField(fieldNum, prevVal?.value.let {
-                when (it) {
-                    null -> value
-                    is UnknownField.Value.Composite -> it.copy(values = it.values + value)
-                    else -> UnknownField.Value.Composite(listOf(it, value))
-                }
-            })
+        val key = WireFormat.getTagFieldNumber(tag)
+        val prevValue = unknownFields.get(key)
+        val nextValue = prevValue?.value.let {
+            when (it) {
+                null -> value
+                is UnknownField.Value.Composite -> it.copy(values = it.values + value)
+                else -> UnknownField.Value.Composite(listOf(it, value))
+            }
         }
+        unknownFields.put(key, UnknownField(key, nextValue))
     }
 
     actual fun unknownFields() = currentUnknownFields?.toMap() ?: emptyMap()
